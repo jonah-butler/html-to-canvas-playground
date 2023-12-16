@@ -34,8 +34,8 @@ const generateCanvas = (): AppError | void => {
     const dimensions = retrieveEditorDimensions();
     if (!dimensions) return throwError("NO_DIMENSIONS", ERRORS.NO_DIMENSIONS);
 
-    setCanvasWidthHeight(context.canvas, dimensions);
     clearCanvas(context, dimensions);
+    setCanvasWidthHeight(context.canvas, dimensions);
     disableCanvasImageSmoothing(context);
 
     // move this into convertToSVG
