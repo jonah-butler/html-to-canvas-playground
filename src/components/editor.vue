@@ -157,30 +157,13 @@ defineExpose({
 </script>
 
 <template>
-  <div
-    id="editor"
-    ref="editor"
-    @mouseup="handleMouseUp()"
-    @mousemove="handleMouseMove($event)"
-  >
+  <div id="editor" ref="editor" @mouseup="handleMouseUp()" @mousemove="handleMouseMove($event)">
     <div v-for="(element, i) in elements">
-      <img
-        v-if="element.type === 'image'"
-        :key="i"
-        :class="element.class"
-        :style="joinStyleProps(element.styles)"
-        :src="element.src"
-        :ref="(el) => (element.reference = el as HTMLElement)"
-        @mousedown="handleMouseDown($event, element)"
-      />
-      <div
-        v-if="element.type === 'div'"
-        :key="i"
-        :class="element.class"
-        :style="joinStyleProps(element.styles)"
-        :ref="(el) => (element.reference = el as HTMLElement)"
-        @mousedown="handleMouseDown($event, element)"
-      ></div>
+      <img v-if="element.type === 'image'" :key="i" :class="element.class" :style="joinStyleProps(element.styles)"
+        :src="element.src" :ref="(el) => (element.reference = el as HTMLElement)"
+        @mousedown="handleMouseDown($event, element)" />
+      <div v-if="element.type === 'div'" :key="i" :class="element.class" :style="joinStyleProps(element.styles)"
+        :ref="(el) => (element.reference = el as HTMLElement)" @mousedown="handleMouseDown($event, element)"></div>
     </div>
   </div>
 </template>
@@ -198,6 +181,7 @@ defineExpose({
   position: relative;
   z-index: 1;
 }
+
 .drag-item {
   width: 100px;
   height: 100px;
@@ -206,6 +190,7 @@ defineExpose({
   touch-action: none;
   user-select: none;
 }
+
 .drag-item-2 {
   width: 75px;
   height: 75px;
@@ -214,6 +199,7 @@ defineExpose({
   touch-action: none;
   user-select: none;
 }
+
 .drag-item-3 {
   width: 85px;
   height: 85px;
@@ -223,15 +209,18 @@ defineExpose({
   touch-action: none;
   user-select: none;
 }
+
 .drag {
   transition: opacity 0.2s ease;
   position: absolute;
   top: 0;
   left: 0;
 }
+
 .drag:active {
   opacity: 0.8;
 }
+
 .drag:hover {
   cursor: pointer;
   border-width: 13px;
