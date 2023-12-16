@@ -25,6 +25,7 @@ defineExpose({
   margin: 0 auto;
   margin-top: 20px;
 }
+
 .canvas-container canvas {
   background-color: #434242;
   border-radius: 10px;

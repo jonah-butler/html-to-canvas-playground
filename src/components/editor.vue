@@ -25,7 +25,7 @@ const elements = ref<ElementJSON[]>([
   },
   {
     type: "image",
-    src: "https://upload.wikimedia.org/wikipedia/commons/thumb/1/15/Cat_August_2010-4.jpg/362px-Cat_August_2010-4.jpg",
+    src: "https://dev-blog-resources.s3.amazonaws.com/canvas_1696708967226.png",
     reference: null,
     class: "drag",
     initialX: 0,
@@ -35,7 +35,7 @@ const elements = ref<ElementJSON[]>([
     isActive: false,
     styles: {
       "width": "auto",
-      "height": "200px",
+      "height": "500px",
       "z-index": "1",
     },
   },

@@ -21,6 +21,8 @@ const generateCanvas = (): void => {
     if (dimensions) {
       context!.canvas.width = dimensions.width;
       context!.canvas.height = dimensions.height;
+      //makes images smoother
+      context!.imageSmoothingEnabled = false;
       context!.clearRect(0, 0, dimensions.width, dimensions.height);
       // console.log(sortByIndex(elements));
       for (const element of elements) {
