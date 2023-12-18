@@ -22,7 +22,7 @@ const editor = ref<InstanceType<typeof Editor>>();
 //   return elements.sort((a, b) => a.styles["z-index"] - b.styles["z-index"]);
 // };
 
-const generateCanvas = (): AppError | void => {
+const generateCanvas = async (): Promise<AppError | void> => {
 
   const elements = retrieveElements();
 
@@ -40,7 +40,8 @@ const generateCanvas = (): AppError | void => {
 
     // move this into convertToSVG
     for (const element of elements) {
-      convertToSVG(element, context!);
+      console.log("converting element...", element.type);
+      await convertToSVG(element, context!);
     }
 
   }

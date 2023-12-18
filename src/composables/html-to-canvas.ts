@@ -34,10 +34,10 @@ const svg = new Blob([data], { type: "image/svg+xml;charset=utf-8" });
 return window.URL.createObjectURL(svg);
 };
 
-const convertToSVG = (
+const convertToSVG = async (
   e: ElementJSON,
   canvasContext: CanvasRenderingContext2D
-): void => {
+): Promise<void> => {
 
   if(!e.reference) throw new RenderingError({name: "ELEMENT_REFERENCE", message: ERRORS.LOAD_IMAGE_FAILURE});
   setXMLNS(e.reference);
@@ -61,8 +61,10 @@ const convertToSVG = (
 
   }
 
+  await loadImage(image, url);
   loadImage(image, url)
     .then(() => {
+      console.log("drawing loaded image...", e.type);
       canvasContext.drawImage(image, e.currentX, e.currentY, width, height);
       window.URL.revokeObjectURL(url);
     })

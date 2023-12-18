@@ -20,7 +20,7 @@ const elements = ref<ElementJSON[]>([
       "height": "50px",
       "background-color": "blue",
       "border-radius": "50%",
-      "z-index": "5",
+      "z-index": "1",
     },
   },
   {
@@ -35,8 +35,8 @@ const elements = ref<ElementJSON[]>([
     isActive: false,
     styles: {
       "width": "auto",
-      "height": "500px",
-      "z-index": "1",
+      "height": "200px",
+      "z-index": "2",
     },
   },
   {
@@ -53,7 +53,7 @@ const elements = ref<ElementJSON[]>([
       "height": "50px",
       "background-color": "yellow",
       "border-radius": "50%",
-      "z-index": "2",
+      "z-index": "3",
     },
   },
   {
@@ -69,7 +69,7 @@ const elements = ref<ElementJSON[]>([
       "width": "50px",
       "height": "50px",
       "background-color": "purple",
-      "z-index": "3",
+      "z-index": "4",
     },
   },
   {
@@ -86,7 +86,7 @@ const elements = ref<ElementJSON[]>([
       "height": "50px",
       "background-color": "green",
       "border-radius": "50%",
-      "z-index": "4",
+      "z-index": "5",
     },
   },
 ]);
@@ -150,6 +150,10 @@ const retrieveDimensions = (): {
   };
 };
 
+const toggleSelect = (): void => {
+
+}
+
 defineExpose({
   retrieveElements,
   retrieveDimensions,
@@ -159,11 +163,13 @@ defineExpose({
 <template>
   <div id="editor" ref="editor" @mouseup="handleMouseUp()" @mousemove="handleMouseMove($event)">
     <div v-for="(element, i) in elements">
-      <img v-if="element.type === 'image'" :key="i" :class="element.class" :style="joinStyleProps(element.styles)"
-        :src="element.src" :ref="(el) => (element.reference = el as HTMLElement)"
-        @mousedown="handleMouseDown($event, element)" />
-      <div v-if="element.type === 'div'" :key="i" :class="element.class" :style="joinStyleProps(element.styles)"
-        :ref="(el) => (element.reference = el as HTMLElement)" @mousedown="handleMouseDown($event, element)"></div>
+      <img v-if="element.type === 'image'" :key="i" class="drag" :class="{ active: element.isActive }"
+        :style="joinStyleProps(element.styles)" :src="element.src" :ref="(el) => (element.reference = el as HTMLElement)"
+        @mousedown="handleMouseDown($event, element)" @click="toggleSelect" />
+      <div v-if="element.type === 'div'" :key="i" class="drag" :class="{ active: element.isActive }"
+        :style="joinStyleProps(element.styles)" :ref="(el) => (element.reference = el as HTMLElement)"
+        @mousedown="handleMouseDown($event, element)" @click="toggleSelect">
+      </div>
     </div>
   </div>
 </template>
