@@ -7,6 +7,15 @@ export interface ElementJSON {
   initialY: number;
   currentX: number;
   currentY: number;
-  isActive: boolean;
+  isDragging: boolean;
+  isResizing: boolean;
   styles: Record<string, string>;
+}
+
+export interface ResizeRecord {
+  initialX: number;
+  initialY: number;
+  currentX: number;
+  currentY: number;
+  isActive: boolean;
 }
