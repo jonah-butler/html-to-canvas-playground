@@ -1,6 +1,6 @@
 export interface ElementJSON {
   type: string;
-  src?: string;
+  data?: string;
   reference: HTMLElement | null;
   class: string;
   initialX: number;
@@ -10,7 +10,7 @@ export interface ElementJSON {
   isDragging: boolean;
   isResizing: boolean;
   isSelected: boolean;
-  styles: Record<string, string>;
+  styles: Record<string, string | number>;
 }
 
 export interface ResizeRecord {
@@ -18,5 +18,8 @@ export interface ResizeRecord {
   initialY: number;
   currentX: number;
   currentY: number;
-  isActive: boolean;
+  mouseX: number;
+  mouseY: number;
+  posX: number;
+  posY: number;
 }

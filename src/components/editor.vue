@@ -2,36 +2,17 @@
 import { ref, defineExpose } from "vue";
 import IMAGE from "./elements/image.vue";
 import { ElementJSON, ResizeRecord } from "../types";
+import ElementCustomize from "./menus/element-customize.vue";
 
-// MOVE ZOOM INTO OTHER COMPOSABLE
-// let zoom = 1;
-// const ZOOM_SPEED = 0.1;
 const editor = ref<HTMLElement>();
 const resizeOrientation = ref("");
+const resizeSide = ref("");
 const activeElement = ref<ElementJSON>();
 const activeResize = ref<ResizeRecord>();
 const elements = ref<ElementJSON[]>([
-  // {
-  //   type: "div",
-  //   reference: null,
-  //   class: "drag",
-  //   initialX: 0,
-  //   initialY: 0,
-  //   currentX: 0,
-  //   currentY: 0,
-  //   isActive: false,
-  //   styles: {
-  //     "width": "50px",
-  //     "height": "50px",
-  //     "background-color": "blue",
-  //     "border-radius": "50%",
-  //     "z-index": "1",
-  //   },
-  // },
   {
     type: "IMAGE",
-    // src: "https://dev-blog-resources.s3.amazonaws.com/canvas_1696708967226.png",
-    src: "https://files.mykcm.com/instagram-v2-20230504-feed-1-Affordability-Multi-1.png?not-from-cache-please",
+    data: "https://files.mykcm.com/instagram-v2-20230504-feed-1-Affordability-Multi-1.png?not-from-cache-please",
     reference: null,
     class: "drag",
     initialX: 0,
@@ -57,94 +38,50 @@ const elements = ref<ElementJSON[]>([
   //   currentY: 0,
   //   isActive: false,
   //   styles: {
-  //     "width": "70px",
-  //     "height": "50px",
-  //     "background-color": "yellow",
-  //     "border-radius": "50%",
-  //     "z-index": "3",
-  //   },
-  // },
-  // {
-  //   type: "div",
-  //   reference: null,
-  //   class: "drag",
-  //   initialX: 0,
-  //   initialY: 0,
-  //   currentX: 0,
-  //   currentY: 0,
-  //   isActive: false,
-  //   styles: {
   //     "width": "50px",
   //     "height": "50px",
   //     "background-color": "purple",
   //     "z-index": "4",
   //   },
   // },
-  // {
-  //   type: "div",
-  //   reference: null,
-  //   class: "drag",
-  //   initialX: 0,
-  //   initialY: 0,
-  //   currentX: 0,
-  //   currentY: 0,
-  //   isActive: false,
-  //   styles: {
-  //     "width": "50px",
-  //     "height": "50px",
-  //     "background-color": "green",
-  //     "border-radius": "50%",
-  //     "z-index": "5",
-  //   },
-  // },
 ]);
-
-// const joinStyleProps = (styles: Record<string, string>): string => {
-//   let inlineStyles = "";
-//   for (const style in styles) {
-//     inlineStyles += `${style}:${styles[style]};`;
-//   }
-//   return inlineStyles;
-// };
-
-// const handleMouseDown = (e: MouseEvent, element: ElementJSON): void => {
-//   element.initialX = e.clientX - element.currentX;
-//   element.initialY = e.clientY - element.currentY;
-
-//   element.isActive = true;
-//   activeElement.value = element;
-// };
 
 const handleMouseUp = (): void => {
   if (activeElement.value) {
-
     if (!activeElement.value.isResizing) {
-      activeElement.value = undefined;
-      activeResize.value = undefined;
-    } else {
-      activeElement.value!.isDragging = true;
-      activeElement.value!.isResizing = false;
-      activeElement.value = undefined;
+      // mouse up on drag
+      console.log("not resizing...");
+      activeElement.value!.isDragging = false;
+      // activeElement.value = undefined;
       // activeResize.value = undefined;
+    } else {
+      // mouse up on resize
+      console.log("was resizing");
+      activeElement.value!.isDragging = false;
+      activeElement.value!.isResizing = false;
+      // activeElement.value = undefined;
     }
-
   }
 };
 
 const handleMouseMove = (e: MouseEvent): void => {
-  console.log("moving mouse", activeElement.value ? activeElement.value.type : undefined);
-  if (activeElement.value?.isDragging && !activeElement.value?.isResizing) {
+  if (
+    activeElement.value?.isDragging &&
+    !activeElement.value?.isResizing &&
+    activeElement.value.isSelected
+  ) {
     handleMove(e);
   } else if (
     activeElement.value?.isResizing &&
-    !activeElement.value?.isDragging
+    !activeElement.value?.isDragging &&
+    activeElement.value.isSelected
   ) {
     handleResize(e);
   }
 };
 
 const handleMove = (e: MouseEvent): void => {
-  if (activeElement.value) {
+  if (activeElement.value?.isDragging) {
     e.preventDefault();
 
     activeElement.value!.currentX = e.clientX - activeElement.value!.initialX;
@@ -152,22 +89,43 @@ const handleMove = (e: MouseEvent): void => {
   }
 };
 
+const SIZE_MIN = 20;
+
 const handleResize = (e: MouseEvent): void => {
   if (activeElement.value && activeResize.value) {
+    const height = parseInt(activeElement.value.styles.height as string);
+
+    const y = activeResize.value.currentY - e.clientY;
+    // set new currentY
+    activeResize.value.currentY = e.clientY;
+
     if (resizeOrientation.value === "top") {
-      // can consolidate
-      const updatedPos =
-        parseInt(activeElement.value.styles.height) +
-        (activeResize.value.currentY - e.clientY);
-      activeResize.value.currentY = e.clientY;
-      activeElement.value.styles.height = `${updatedPos}px`;
+      const updated = height + y;
+      if (updated >= SIZE_MIN) {
+        // update height
+        activeElement.value.styles.height = `${updated}px`;
+        // update y position
+        activeElement.value.currentY =
+          activeElement.value.currentY - (updated - height);
+        // if resizing from top left also update x position
+        if (resizeSide.value === "left") {
+          activeElement.value.currentX =
+            activeElement.value.currentX - (updated - height);
+        }
+      }
     } else if ((resizeOrientation.value = "bottom")) {
-      // can consolidate
-      const updatedPos =
-        parseInt(activeElement.value.styles.height) +
-        -(activeResize.value.currentY - e.clientY);
-      activeResize.value.currentY = e.clientY;
-      activeElement.value.styles.height = `${updatedPos}px`;
+      const updated = height + -y;
+      if (updated >= SIZE_MIN) {
+        // update height
+        activeElement.value.styles.height = `${updated}px`;
+
+        // resizing default works best on bottom right when
+        // scaling, so just account for bottom left
+        if (resizeSide.value === "left") {
+          activeElement.value.currentX =
+            activeElement.value.currentX - (updated - height);
+        }
+      }
     }
   }
 };
@@ -210,25 +168,20 @@ const setActiveResize = (
   resize: ResizeRecord,
   direction: string
 ): void => {
+  const splitDir = direction.split("-");
+  // eg. top || bottom
+  resizeOrientation.value = splitDir[0];
+  // eg left || right
+  resizeSide.value = splitDir[1];
+
   activeElement.value = element;
   activeResize.value = resize;
-  resizeOrientation.value = direction;
 };
 
-// EVENTUALLY FIX THIS
-// const zoom = (e: WheelEvent): void => {
-//   if (e.deltaY > 0) {
-//     const scale = zoom += ZOOM_SPEED;
-//     if (scale < 8) {
-//       editor.value!.style.transform = `scale(${scale})`;
-//     }
-//   } else {
-//     const scale = zoom -= ZOOM_SPEED;
-//     if (scale > 0.2) {
-//       editor.value!.style.transform = `scale(${zoom -= ZOOM_SPEED})`;
-//     }
-//   }
-// }
+const clearActiveElement = (): void => {
+  activeElement.value = undefined;
+  activeResize.value = undefined;
+};
 
 defineExpose({
   retrieveElements,
@@ -237,31 +190,28 @@ defineExpose({
 </script>
 
 <template>
-  <div id="editor" ref="editor" @mouseup="handleMouseUp()" @mousemove="handleMouseMove($event)">
-    <!-- <div v-for="(element, i) in elements"> -->
-    <component v-for="(element, i) in elements" :is="evaluateComponent(element.type)" :index="i"
-      @setActiveElement="setActiveElement" @setActiveResize="setActiveResize" />
-    <!-- <img
-        v-if="element.type === 'IMAGE'"
-        :key="i"
-        class="drag"
-        :class="{ active: element.isActive }"
-        :style="joinStyleProps(element.styles)"
-        :src="element.src"
-        :ref="(el) => (element.reference = el as HTMLElement)"
-        @mousedown="handleMouseDown($event, element)"
-      /> -->
-    <!-- <div
-        v-if="element.type === 'div'"
-        :key="i"
-        class="drag"
-        :class="{ active: element.isActive }"
-        :style="joinStyleProps(element.styles)"
-        :ref="(el) => (element.reference = el as HTMLElement)"
-        @mousedown="handleMouseDown($event, element)"
-        @click="toggleSelect"
-      ></div> -->
-    <!-- </div> -->
+  <section style="min-height: 75px">
+    <ElementCustomize
+      v-if="activeElement"
+      test="1"
+      :activeElement="activeElement"
+    />
+  </section>
+  <div
+    tabindex="0"
+    id="editor"
+    ref="editor"
+    @mouseup="handleMouseUp()"
+    @mousemove="handleMouseMove($event)"
+  >
+    <component
+      v-for="(element, i) in elements"
+      :is="evaluateComponent(element.type)"
+      :index="i"
+      @setActiveElement="setActiveElement"
+      @setActiveResize="setActiveResize"
+      @clearActiveElement="clearActiveElement"
+    />
   </div>
 </template>
 

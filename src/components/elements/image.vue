@@ -17,6 +17,7 @@ const emits = defineEmits<{
     resize: ResizeRecord,
     direction: string
   ): void;
+  (e: "clearActiveElement"): void;
 }>();
 
 const type = "image";
@@ -26,10 +27,13 @@ const resize = reactive<ResizeRecord>({
   initialY: 0,
   currentX: 0,
   currentY: 0,
-  isActive: false,
+  mouseX: 0,
+  mouseY: 0,
+  posX: 0,
+  posY: 0,
 });
 
-const settings = reactive({
+const settings: ElementJSON = reactive({
   type,
   data: "https://files.mykcm.com/instagram-v2-20230504-feed-1-Affordability-Multi-1.png?not-from-cache-please",
   reference: null,
@@ -44,7 +48,9 @@ const settings = reactive({
   styles: {
     "width": "auto",
     "height": "300px",
+    "opacity": 0.6,
     "z-index": "2",
+    "border-radius": "0%",
   },
 });
 
@@ -52,7 +58,7 @@ const settings = reactive({
 //  METHODS
 //###########
 
-const joinStyleProps = (styles: Record<string, string>): string => {
+const joinStyleProps = (styles: Record<string, string | number>): string => {
   let inlineStyles = "";
   for (const style in styles) {
     inlineStyles += `${style}:${styles[style]};`;
@@ -62,15 +68,12 @@ const joinStyleProps = (styles: Record<string, string>): string => {
 
 const handleMouseDown = (e: MouseEvent): void => {
   settings.isSelected = true;
-  if (!resize.isActive) {
+  settings.initialX = e.clientX - settings.currentX;
+  settings.initialY = e.clientY - settings.currentY;
+  if (!settings.isResizing) {
     settings.isDragging = true;
-    settings.initialX = e.clientX - settings.currentX;
-    settings.initialY = e.clientY - settings.currentY;
-
     emits("setActiveElement", settings);
   } else {
-    settings.initialX = e.clientX - settings.currentX;
-    settings.initialY = e.clientY - settings.currentY;
     emits("setActiveElement", settings);
   }
 };
@@ -87,16 +90,37 @@ const moveElement = (): void => {
 const handleResizeMouseDown = (e: MouseEvent, direction: string): void => {
   settings.isDragging = false;
   settings.isResizing = true;
-  resize.isActive = true;
   resize.currentY = e.clientY;
+  // new stuff
+  resize.mouseY = e.pageY;
+  if (settings.reference) {
+    resize.posX = settings.reference.getBoundingClientRect().left;
+    resize.posY = settings.reference.getBoundingClientRect().top;
+  }
+  // end new stuff
   emits("setActiveResize", settings, resize, direction);
 };
 
-const removeActiveState = (): void => {
-  settings.isResizing = false;
-  settings.isDragging = false;
-  resize.isActive = false;
-  settings.isSelected = false;
+const removeActiveState = (e: FocusEvent): void => {
+  // this is acting weird after an element is focused
+  // then a click occurs in the element customizer
+  // then the next click happens inside the editor
+  // the active state does not get removed
+  const blurTarget = e.relatedTarget;
+  if (
+    !document
+      .querySelector(".customizer__container")
+      ?.contains(blurTarget as HTMLElement)
+  ) {
+    settings.isResizing = false;
+    settings.isDragging = false;
+    settings.isSelected = false;
+    emits("clearActiveElement");
+  } else {
+    // if using inputs anywhere else
+    // this will cause those inputs to not be focusable
+    settings.reference?.focus();
+  }
 };
 
 // ##########
@@ -114,15 +138,41 @@ watch(
   {{ settings.isDragging }}
   {{ settings.isResizing }}
   <!-- will eventually be a tool component -->
-  <div tabindex="0" class="tool" @mousedown="handleMouseDown($event)" @blur="removeActiveState"
-    :ref="(el) => setReference(el)" :class="{ active: settings.isSelected }">
-    <div @mousedown="handleResizeMouseDown($event, 'top')" v-if="settings.isSelected" class="expand top-left"></div>
-    <div @mousedown="handleResizeMouseDown($event, 'top')" v-if="settings.isSelected" class="expand top-right"></div>
-    <div @mousedown="handleResizeMouseDown($event, 'bottom')" v-if="settings.isSelected" class="expand bottom-left"></div>
-    <div @mousedown="handleResizeMouseDown($event, 'bottom')" v-if="settings.isSelected" class="expand bottom-right">
-    </div>
-    <img class="drag" :class="{ active: settings.isDragging }" :src="settings.data"
-      :style="joinStyleProps(settings.styles)" @blur="settings.isDragging = false" />
+  <div
+    tabindex="0"
+    class="tool"
+    @mousedown="handleMouseDown($event)"
+    @blur="removeActiveState"
+    :ref="(el) => setReference(el)"
+    :class="{ active: settings.isSelected }"
+  >
+    <div
+      @mousedown="handleResizeMouseDown($event, 'top-left')"
+      v-if="settings.isSelected"
+      class="expand top-left"
+    ></div>
+    <div
+      @mousedown="handleResizeMouseDown($event, 'top-right')"
+      v-if="settings.isSelected"
+      class="expand top-right"
+    ></div>
+    <div
+      @mousedown="handleResizeMouseDown($event, 'bottom-left')"
+      v-if="settings.isSelected"
+      class="expand bottom-left"
+    ></div>
+    <div
+      @mousedown="handleResizeMouseDown($event, 'bottom-right')"
+      v-if="settings.isSelected"
+      class="expand bottom-right"
+    ></div>
+    <img
+      class="drag"
+      :class="{ active: settings.isDragging }"
+      :src="settings.data"
+      :style="joinStyleProps(settings.styles)"
+      @blur="settings.isDragging = false"
+    />
   </div>
 </template>
 
@@ -152,11 +202,13 @@ img {
 }
 
 .expand {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
   background: white;
+  border: 1px solid white;
   border-radius: 50%;
   position: absolute;
+  z-index: 3;
 }
 
 .expand.top-right:hover {
@@ -176,22 +228,22 @@ img {
 }
 
 .expand.top-left {
-  top: -4px;
-  left: -4px;
+  top: -6px;
+  left: -6px;
 }
 
 .expand.top-right {
-  top: -4px;
-  right: -4px;
+  top: -6px;
+  right: -6px;
 }
 
 .expand.bottom-left {
-  bottom: -4px;
-  left: -4px;
+  bottom: -6px;
+  left: -6px;
 }
 
 .expand.bottom-right {
-  bottom: -4px;
-  right: -4px;
+  bottom: -6px;
+  right: -6px;
 }
 </style>
