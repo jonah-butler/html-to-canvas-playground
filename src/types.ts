@@ -9,6 +9,7 @@ export interface ElementJSON {
   currentY: number;
   isDragging: boolean;
   isResizing: boolean;
+  isSelected: boolean;
   styles: Record<string, string>;
 }
 

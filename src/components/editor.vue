@@ -3,7 +3,9 @@ import { ref, defineExpose } from "vue";
 import IMAGE from "./elements/image.vue";
 import { ElementJSON, ResizeRecord } from "../types";
 
-// const showElementToolbar = ref(false);
+// MOVE ZOOM INTO OTHER COMPOSABLE
+// let zoom = 1;
+// const ZOOM_SPEED = 0.1;
 const editor = ref<HTMLElement>();
 const resizeOrientation = ref("");
 const activeElement = ref<ElementJSON>();
@@ -38,6 +40,7 @@ const elements = ref<ElementJSON[]>([
     currentY: 0,
     isDragging: false,
     isResizing: false,
+    isSelected: false,
     styles: {
       "width": "auto",
       "height": "600px",
@@ -114,13 +117,22 @@ const elements = ref<ElementJSON[]>([
 
 const handleMouseUp = (): void => {
   if (activeElement.value) {
-    activeElement.value = undefined;
-    activeResize.value = undefined;
+
+    if (!activeElement.value.isResizing) {
+      activeElement.value = undefined;
+      activeResize.value = undefined;
+    } else {
+      activeElement.value!.isDragging = true;
+      activeElement.value!.isResizing = false;
+      activeElement.value = undefined;
+      // activeResize.value = undefined;
+    }
+
   }
 };
 
 const handleMouseMove = (e: MouseEvent): void => {
-  console.log("moving mouse");
+  console.log("moving mouse", activeElement.value ? activeElement.value.type : undefined);
   if (activeElement.value?.isDragging && !activeElement.value?.isResizing) {
     handleMove(e);
   } else if (
@@ -203,6 +215,21 @@ const setActiveResize = (
   resizeOrientation.value = direction;
 };
 
+// EVENTUALLY FIX THIS
+// const zoom = (e: WheelEvent): void => {
+//   if (e.deltaY > 0) {
+//     const scale = zoom += ZOOM_SPEED;
+//     if (scale < 8) {
+//       editor.value!.style.transform = `scale(${scale})`;
+//     }
+//   } else {
+//     const scale = zoom -= ZOOM_SPEED;
+//     if (scale > 0.2) {
+//       editor.value!.style.transform = `scale(${zoom -= ZOOM_SPEED})`;
+//     }
+//   }
+// }
+
 defineExpose({
   retrieveElements,
   retrieveDimensions,
@@ -210,20 +237,10 @@ defineExpose({
 </script>
 
 <template>
-  <div
-    id="editor"
-    ref="editor"
-    @mouseup="handleMouseUp()"
-    @mousemove="handleMouseMove($event)"
-  >
+  <div id="editor" ref="editor" @mouseup="handleMouseUp()" @mousemove="handleMouseMove($event)">
     <!-- <div v-for="(element, i) in elements"> -->
-    <component
-      v-for="(element, i) in elements"
-      :is="evaluateComponent(element.type)"
-      :index="i"
-      @setActiveElement="setActiveElement"
-      @setActiveResize="setActiveResize"
-    />
+    <component v-for="(element, i) in elements" :is="evaluateComponent(element.type)" :index="i"
+      @setActiveElement="setActiveElement" @setActiveResize="setActiveResize" />
     <!-- <img
         v-if="element.type === 'IMAGE'"
         :key="i"
