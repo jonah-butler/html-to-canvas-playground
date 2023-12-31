@@ -12,7 +12,7 @@ const ERRORS = {
   NO_CONTEXT: "Null context in getting rendering context",
 };
 type AppVueErrors = keyof typeof ERRORS;
-class AppError extends ServiceError<AppVueErrors> {}
+class AppError extends ServiceError<AppVueErrors> { }
 
 const showCanvas = ref(true);
 const canvas = ref<InstanceType<typeof Canvas>>();

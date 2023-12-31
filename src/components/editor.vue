@@ -1,33 +1,75 @@
 <script setup lang="ts">
-import { ref, defineExpose } from "vue";
+import { ref, defineExpose, onMounted, computed } from "vue";
 import IMAGE from "./elements/image.vue";
-import { ElementJSON, ResizeRecord } from "../types";
+import { ElementJSON, ResizeRecord, ToolConfig } from "../types";
 import ElementCustomize from "./menus/element-customize.vue";
+import ToolWrapper from "./elements/tool-wrapper.vue";
 
 const editor = ref<HTMLElement>();
 const resizeOrientation = ref("");
 const resizeSide = ref("");
 const activeElement = ref<ElementJSON>();
 const activeResize = ref<ResizeRecord>();
+// default values to avoid non-null checking
+const toolConfig = ref<ToolConfig>({
+  height: 0,
+  left: 0,
+  top: 0,
+  width: 0,
+  x: 0,
+  y: 0,
+  initialX: 0,
+  initialY: 0,
+});
 const elements = ref<ElementJSON[]>([
   {
     type: "IMAGE",
     data: "https://files.mykcm.com/instagram-v2-20230504-feed-1-Affordability-Multi-1.png?not-from-cache-please",
     reference: null,
-    class: "drag",
+    class: "",
     initialX: 0,
     initialY: 0,
     currentX: 0,
     currentY: 0,
+    mouseX: 0,
+    rotation: 0,
     isDragging: false,
     isResizing: false,
+    isRotating: false,
     isSelected: false,
     styles: {
       "width": "auto",
-      "height": "600px",
-      "z-index": "2",
+      "height": "300px",
+      "opacity": 1,
+      "z-index": "1",
+      "border-radius": "0%",
+      "transform": `rotate(0deg)`,
     },
   },
+  {
+    type: "IMAGE",
+    data: "https://dev-blog-resources.s3.amazonaws.com/canvas_1696708967226.png",
+    reference: null,
+    class: "",
+    initialX: 0,
+    initialY: 0,
+    currentX: 0,
+    currentY: 0,
+    mouseX: 0,
+    rotation: 0,
+    isDragging: false,
+    isResizing: false,
+    isRotating: false,
+    isSelected: false,
+    styles: {
+      "width": "auto",
+      "height": "300px",
+      "opacity": 1,
+      "z-index": "2",
+      "border-radius": "0%",
+      "transform": `rotate(0deg)`,
+    },
+  }
   // {
   //   type: "div",
   //   reference: null,
@@ -46,28 +88,42 @@ const elements = ref<ElementJSON[]>([
   // },
 ]);
 
+onMounted((): void => {
+  document.addEventListener("mouseup", handleMouseUp);
+  document.addEventListener("mousemove", handleMouseMove);
+});
+
+const findActiveElementIndex = computed((): number => {
+  return elements.value.findIndex(ele => ele === activeElement.value);
+});
+
 const handleMouseUp = (): void => {
   if (activeElement.value) {
     if (!activeElement.value.isResizing) {
       // mouse up on drag
-      console.log("not resizing...");
       activeElement.value!.isDragging = false;
+      activeElement.value!.isRotating = false;
       // activeElement.value = undefined;
       // activeResize.value = undefined;
     } else {
       // mouse up on resize
-      console.log("was resizing");
       activeElement.value!.isDragging = false;
       activeElement.value!.isResizing = false;
+      activeElement.value!.isRotating = false;
       // activeElement.value = undefined;
     }
   }
 };
 
 const handleMouseMove = (e: MouseEvent): void => {
+  e.preventDefault();
+  if (!activeElement.value) return;
+  // remove type annotations
+  // simplify conditionals
   if (
     activeElement.value?.isDragging &&
     !activeElement.value?.isResizing &&
+    !activeElement.value?.isRotating &&
     activeElement.value.isSelected
   ) {
     handleMove(e);
@@ -77,8 +133,34 @@ const handleMouseMove = (e: MouseEvent): void => {
     activeElement.value.isSelected
   ) {
     handleResize(e);
+  } else if (
+    activeElement.value?.isRotating &&
+    activeElement.value?.isSelected) {
+    handleRotate(e);
   }
 };
+
+const FULL_ROTATION = 360;
+
+const handleRotate = (e: MouseEvent): void => {
+  e.preventDefault();
+  let rotationDegrees = e.clientX - activeElement.value?.mouseX!;
+
+  if (rotationDegrees === FULL_ROTATION || rotationDegrees === -FULL_ROTATION) {
+    rotationDegrees = 0;
+    activeElement.value!.rotation = rotationDegrees;
+    activeElement.value!.mouseX = e.clientX;
+  }
+  // flip rotation so it matches mouse X direction
+  rotationDegrees = FULL_ROTATION - (FULL_ROTATION + rotationDegrees);
+
+  activeElement.value!.rotation += rotationDegrees;
+
+  // rotate with transform
+  activeElement.value!.styles.transform = `rotate(${activeElement.value!.rotation}deg)`;
+  // reset mouseX
+  activeElement.value!.mouseX = e.clientX;
+}
 
 const handleMove = (e: MouseEvent): void => {
   if (activeElement.value?.isDragging) {
@@ -86,12 +168,17 @@ const handleMove = (e: MouseEvent): void => {
 
     activeElement.value!.currentX = e.clientX - activeElement.value!.initialX;
     activeElement.value!.currentY = e.clientY - activeElement.value!.initialY;
+
+    toolConfig.value.x = activeElement.value.currentX - toolConfig.value.initialX!;
+    toolConfig.value.y = activeElement.value.currentY - toolConfig.value.initialY!;
+
   }
 };
 
 const SIZE_MIN = 20;
 
 const handleResize = (e: MouseEvent): void => {
+  console.log(activeResize.value);
   if (activeElement.value && activeResize.value) {
     const height = parseInt(activeElement.value.styles.height as string);
 
@@ -149,7 +236,25 @@ const retrieveDimensions = (): {
 
 const setActiveElement = (element: ElementJSON): void => {
   activeElement.value = element;
+  // set up dimensions for ToolElement Wrapper
+  if (activeElement.value && activeElement.value.reference) {
+
+    const config = activeElement.value.reference.getBoundingClientRect();
+    const { width, height, top, left } = config;
+
+    toolConfig.value = {
+      height,
+      left,
+      top,
+      width,
+      x: 0,
+      y: 0,
+      initialX: activeElement.value.currentX,
+      initialY: activeElement.value.currentY,
+    };
+  }
 };
+
 
 const evaluateComponent = (type: string): typeof IMAGE => {
   let component;
@@ -183,6 +288,16 @@ const clearActiveElement = (): void => {
   activeResize.value = undefined;
 };
 
+const setActiveRotate = (settings: ElementJSON): void => {
+  // may not need this at all...
+  activeElement.value = settings;
+};
+
+const updateNeighborZIndex = (zIndex: number, index: number): void => {
+  // may get rid of this in favor of updating z-index in element-customize.vue
+  elements.value[index].styles['z-index'] = zIndex;
+};
+
 defineExpose({
   retrieveElements,
   retrieveDimensions,
@@ -190,29 +305,19 @@ defineExpose({
 </script>
 
 <template>
+  <ToolWrapper v-if="activeElement" :totalElements="elements.length" :toolConfig="toolConfig" />
+
   <section style="min-height: 75px">
-    <ElementCustomize
-      v-if="activeElement"
-      test="1"
-      :activeElement="activeElement"
-    />
+    <ElementCustomize v-if="activeElement" :totalElements="elements.length" :activeElement="activeElement"
+      :index="findActiveElementIndex" @updateNeighborZIndex="updateNeighborZIndex" />
   </section>
-  <div
-    tabindex="0"
-    id="editor"
-    ref="editor"
-    @mouseup="handleMouseUp()"
-    @mousemove="handleMouseMove($event)"
-  >
-    <component
-      v-for="(element, i) in elements"
-      :is="evaluateComponent(element.type)"
-      :index="i"
-      @setActiveElement="setActiveElement"
-      @setActiveResize="setActiveResize"
-      @clearActiveElement="clearActiveElement"
-    />
+  <div tabindex="0" id="editor" ref="editor">
+
+    <component v-for="(element, i) in elements" :totalElements="elements.length" :is="evaluateComponent(element.type)"
+      :element="element" :index="i" :src="element.data ?? ''" @setActiveRotate="setActiveRotate"
+      @setActiveElement="setActiveElement" @setActiveResize="setActiveResize" @clearActiveElement="clearActiveElement" />
   </div>
+  {{ activeElement ? activeElement.data : null }}
 </template>
 
 <style scoped>

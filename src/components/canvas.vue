@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref, defineExpose } from "vue";
-// import { NSpace, NSpin } from "naive-ui";
 
 const canvas = ref<HTMLCanvasElement>();
 
@@ -15,9 +14,6 @@ defineExpose({
 
 <template>
   <div class="canvas-container">
-    <!-- <n-space>
-      <n-spin size="large" />
-    </n-space> -->
     <canvas ref="canvas"></canvas>
   </div>
 </template>

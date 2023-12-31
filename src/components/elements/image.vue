@@ -1,11 +1,20 @@
 <script setup lang="ts">
-import { reactive, watch } from "vue";
+import { reactive, PropType, computed } from "vue";
 import { ElementJSON, ResizeRecord } from "../../types";
 
 // PROPS
-defineProps<{
-  index: number;
-}>();
+const props = defineProps({
+  index: Number,
+  src: String, // eventually lose this
+  element: {
+    type: Object as PropType<ElementJSON>,
+    required: true,
+  },
+  totalElements: {
+    type: Number,
+    required: true,
+  },
+});
 
 // EMITS
 const emits = defineEmits<{
@@ -18,9 +27,9 @@ const emits = defineEmits<{
     direction: string
   ): void;
   (e: "clearActiveElement"): void;
+  (e: "setActiveRotate", settings: ElementJSON): void;
 }>();
 
-const type = "image";
 
 const resize = reactive<ResizeRecord>({
   initialX: 0,
@@ -33,30 +42,22 @@ const resize = reactive<ResizeRecord>({
   posY: 0,
 });
 
-const settings: ElementJSON = reactive({
-  type,
-  data: "https://files.mykcm.com/instagram-v2-20230504-feed-1-Affordability-Multi-1.png?not-from-cache-please",
-  reference: null,
-  class: "",
-  initialX: 0,
-  initialY: 0,
-  currentX: 0,
-  currentY: 0,
-  isDragging: false,
-  isResizing: false,
-  isSelected: false,
-  styles: {
-    "width": "auto",
-    "height": "300px",
-    "opacity": 0.6,
-    "z-index": "2",
-    "border-radius": "0%",
-  },
-});
+const settings: ElementJSON = reactive(props.element);
 
 //###########
 //  METHODS
 //###########
+
+const joinCotainerStyleProps = computed((): Record<string, string | number> => {
+  return {
+    "z-index": settings.styles['z-index'],
+    "transform": `translate(${settings.currentX}px, ${settings.currentY}px)`
+  }
+});
+
+// const highestPossibleZIndex = (): number => {
+//   return props.totalElements + 1;
+// };
 
 const joinStyleProps = (styles: Record<string, string | number>): string => {
   let inlineStyles = "";
@@ -66,26 +67,45 @@ const joinStyleProps = (styles: Record<string, string | number>): string => {
   return inlineStyles;
 };
 
-const handleMouseDown = (e: MouseEvent): void => {
-  settings.isSelected = true;
-  settings.initialX = e.clientX - settings.currentX;
-  settings.initialY = e.clientY - settings.currentY;
-  if (!settings.isResizing) {
-    settings.isDragging = true;
-    emits("setActiveElement", settings);
-  } else {
-    emits("setActiveElement", settings);
-  }
+const setInitialPosition = (x: number, y: number): void => {
+  settings.initialX = x - settings.currentX;
+  settings.initialY = y - settings.currentY;
 };
+
+const handleMouseDown = (e: MouseEvent): void => {
+  setTimeout(() => {
+
+    settings.isSelected = true;
+    setInitialPosition(e.clientX, e.clientY);
+    if (!settings.isResizing) {
+      settings.isDragging = true;
+      emits("setActiveElement", settings);
+    } else {
+      emits("setActiveElement", settings);
+    }
+
+  }, 1);
+  // emits("clearActiveElement");
+  // settings.isSelected = true;
+  // setInitialPosition(e.clientX, e.clientY);
+  // if (!settings.isResizing) {
+  //   settings.isDragging = true;
+  //   emits("setActiveElement", settings);
+  // } else {
+  //   emits("setActiveElement", settings);
+  // }
+};
+
 
 const setReference = (element: any): void => {
   settings.reference = element;
 };
 
-const moveElement = (): void => {
-  (settings.reference! as HTMLElement).style.transform =
-    "translate(" + settings.currentX + "px, " + settings.currentY + "px)";
-};
+// const moveElement = (): void => {
+// (settings.reference! as HTMLElement).style.transform =
+//   "translate(" + settings.currentX + "px, " + settings.currentY + "px)";
+// console.log("moving ele")
+// };
 
 const handleResizeMouseDown = (e: MouseEvent, direction: string): void => {
   settings.isDragging = false;
@@ -101,6 +121,12 @@ const handleResizeMouseDown = (e: MouseEvent, direction: string): void => {
   emits("setActiveResize", settings, resize, direction);
 };
 
+const handleRotateMouseDown = (e: MouseEvent): void => {
+  settings.mouseX = e.clientX;
+  settings.isRotating = true;
+  emits("setActiveRotate", settings)
+};
+
 const removeActiveState = (e: FocusEvent): void => {
   // this is acting weird after an element is focused
   // then a click occurs in the element customizer
@@ -108,71 +134,59 @@ const removeActiveState = (e: FocusEvent): void => {
   // the active state does not get removed
   const blurTarget = e.relatedTarget;
   if (
-    !document
+    document
       .querySelector(".customizer__container")
       ?.contains(blurTarget as HTMLElement)
   ) {
-    settings.isResizing = false;
-    settings.isDragging = false;
-    settings.isSelected = false;
-    emits("clearActiveElement");
-  } else {
     // if using inputs anywhere else
     // this will cause those inputs to not be focusable
     settings.reference?.focus();
+  } else if (
+    document
+      .querySelector(".tool")
+      ?.contains(blurTarget as HTMLElement)
+  ) {
+    settings.reference?.focus();
+  } else {
+    console.log("removing active state")
+    settings.isResizing = false;
+    settings.isDragging = false;
+    settings.isSelected = false;
+    // do not need this - MAYBE
+    emits("clearActiveElement");
   }
 };
+
+
 
 // ##########
 // WATCHER
 // #########
-watch(
-  () => [settings.currentX, settings.currentY],
-  () => {
-    moveElement();
-  }
-);
+// watch(
+//   () => [settings.currentX, settings.currentY],
+//   () => {
+//     moveElement();
+//   }
+// );
 </script>
 
 <template>
-  {{ settings.isDragging }}
-  {{ settings.isResizing }}
+  <!-- {{ settings.isDragging }}
+  {{ settings.isResizing }} -->
   <!-- will eventually be a tool component -->
-  <div
-    tabindex="0"
-    class="tool"
-    @mousedown="handleMouseDown($event)"
-    @blur="removeActiveState"
-    :ref="(el) => setReference(el)"
-    :class="{ active: settings.isSelected }"
-  >
-    <div
-      @mousedown="handleResizeMouseDown($event, 'top-left')"
-      v-if="settings.isSelected"
-      class="expand top-left"
-    ></div>
-    <div
-      @mousedown="handleResizeMouseDown($event, 'top-right')"
-      v-if="settings.isSelected"
-      class="expand top-right"
-    ></div>
-    <div
-      @mousedown="handleResizeMouseDown($event, 'bottom-left')"
-      v-if="settings.isSelected"
-      class="expand bottom-left"
-    ></div>
-    <div
-      @mousedown="handleResizeMouseDown($event, 'bottom-right')"
-      v-if="settings.isSelected"
-      class="expand bottom-right"
-    ></div>
-    <img
-      class="drag"
-      :class="{ active: settings.isDragging }"
-      :src="settings.data"
-      :style="joinStyleProps(settings.styles)"
-      @blur="settings.isDragging = false"
-    />
+  <div :style="joinCotainerStyleProps" tabindex="0" class="element image" @mousedown="handleMouseDown($event)"
+    @blur="removeActiveState" :ref="(el) => setReference(el)"
+    :class="{ active: settings.isSelected, noRotate: !settings.rotation || settings.rotation === 360 }">
+    <!-- <div @mousedown="handleResizeMouseDown($event, 'top-left')" v-if="settings.isSelected" class="expand top-left"></div>
+    <div @mousedown="handleResizeMouseDown($event, 'top-right')" v-if="settings.isSelected" class="expand top-right">
+    </div>
+    <div @mousedown="handleResizeMouseDown($event, 'bottom-left')" v-if="settings.isSelected" class="expand bottom-left">
+    </div>
+    <div @mousedown="handleResizeMouseDown($event, 'bottom-right')" v-if="settings.isSelected"
+      class="expand bottom-right"></div>
+    <div @mousedown="handleRotateMouseDown($event)" class="rotate" v-if="settings.isSelected"></div> -->
+    <img class="drag" :class="{ active: settings.isDragging }" :src="settings.data"
+      :style="joinStyleProps(settings.styles)" @blur="settings.isDragging = false" />
   </div>
 </template>
 
@@ -189,16 +203,38 @@ img {
   left: 0;
 }
 
-.tool {
-  position: relative;
+.element {
+  position: absolute;
   width: fit-content;
   display: flex;
   /* padding: 3px; */
 }
 
-.tool.active {
+/* .tool.active {
   border: 1px solid white;
   margin: -1px;
+} */
+
+/* .tool.active.noRotate {
+  border: 2px solid rgb(236, 24, 236);
+  margin: -2px;
+} */
+
+.rotate {
+  position: absolute;
+  bottom: -30px;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 10px;
+  height: 10px;
+  background: white;
+  border-radius: 50%;
+  /* z-index: 3; */
+  touch-action: none;
+}
+
+.rotate:hover {
+  cursor: ew-resize;
 }
 
 .expand {
