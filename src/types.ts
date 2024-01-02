@@ -37,3 +37,8 @@ export interface ToolConfig {
   initialX?: number;
   initialY?: number;
 }
+
+export interface ResizeEmit {
+  clientY: number;
+  mouseY: number;
+}

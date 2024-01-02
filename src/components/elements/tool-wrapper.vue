@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { PropType, StyleValue, computed, watch } from "vue";
+import { PropType, StyleValue, computed } from "vue";
 import { ToolConfig } from "../../types";
+import { ElementJSON, ResizeEmit } from "../../types";
 
 const props = defineProps({
   totalElements: {
@@ -11,7 +12,20 @@ const props = defineProps({
     type: Object as PropType<ToolConfig>,
     required: true,
   },
+  activeElement: {
+    type: Object as PropType<ElementJSON>,
+    required: false,
+  }
 });
+
+// EMITS
+const emits = defineEmits<{
+  (
+    e: "setActiveResize",
+    direction: string,
+    data: ResizeEmit,
+  ): void;
+}>();
 
 const cssVars = computed((): StyleValue => {
   return {
@@ -24,17 +38,35 @@ const cssVars = computed((): StyleValue => {
   };
 });
 
+const handleResizeMouseDown = (e: MouseEvent, direction: string): void => {
+  // settings.isDragging = false;
+  // settings.isResizing = true;
+  // resize.currentY = e.clientY;
+  const data = {
+    clientY: e.clientY,
+    mouseY: e.pageY,
+  }
+  // new stuff
+  // resize.mouseY = e.pageY;
+  // if (settings.reference) {
+  //   resize.posX = settings.reference.getBoundingClientRect().left;
+  //   resize.posY = settings.reference.getBoundingClientRect().top;
+  // }
+  // end new stuff
+  emits("setActiveResize", direction, data);
+};
+
 
 </script>
 
 <template>
   <div :style="cssVars" class="tool active" tabindex="0">
-    <div class="expand top-left"></div>
-    <div class="expand top-right">
+    <div @mousedown="handleResizeMouseDown($event, 'top-left')" class="expand top-left"></div>
+    <div @mousedown="handleResizeMouseDown($event, 'top-right')" class="expand top-right">
     </div>
-    <div class="expand bottom-left">
+    <div @mousedown="handleResizeMouseDown($event, 'bottom-left')" class="expand bottom-left">
     </div>
-    <div class="expand bottom-right"></div>
+    <div @mousedown="handleResizeMouseDown($event, 'bottom-right')" class="expand bottom-right"></div>
     <div class="rotate"></div>
   </div>
 </template>

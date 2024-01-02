@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, defineExpose, onMounted, computed } from "vue";
 import IMAGE from "./elements/image.vue";
-import { ElementJSON, ResizeRecord, ToolConfig } from "../types";
+import { ElementJSON, ResizeRecord, ResizeEmit, ToolConfig } from "../types";
 import ElementCustomize from "./menus/element-customize.vue";
 import ToolWrapper from "./elements/tool-wrapper.vue";
 
@@ -38,7 +38,7 @@ const elements = ref<ElementJSON[]>([
     isRotating: false,
     isSelected: false,
     styles: {
-      "width": "auto",
+      "width": "300px",
       "height": "300px",
       "opacity": 1,
       "z-index": "1",
@@ -62,8 +62,8 @@ const elements = ref<ElementJSON[]>([
     isRotating: false,
     isSelected: false,
     styles: {
-      "width": "auto",
-      "height": "300px",
+      "width": "666px",
+      "height": "304px",
       "opacity": 1,
       "z-index": "2",
       "border-radius": "0%",
@@ -178,39 +178,45 @@ const handleMove = (e: MouseEvent): void => {
 const SIZE_MIN = 20;
 
 const handleResize = (e: MouseEvent): void => {
-  console.log(activeResize.value);
   if (activeElement.value && activeResize.value) {
+
     const height = parseInt(activeElement.value.styles.height as string);
+    const width = parseInt(activeElement.value.styles.width as string);
 
     const y = activeResize.value.currentY - e.clientY;
-    // set new currentY
     activeResize.value.currentY = e.clientY;
 
     if (resizeOrientation.value === "top") {
-      const updated = height + y;
-      if (updated >= SIZE_MIN) {
-        // update height
-        activeElement.value.styles.height = `${updated}px`;
-        // update y position
-        activeElement.value.currentY =
-          activeElement.value.currentY - (updated - height);
-        // if resizing from top left also update x position
-        if (resizeSide.value === "left") {
-          activeElement.value.currentX =
-            activeElement.value.currentX - (updated - height);
-        }
-      }
-    } else if ((resizeOrientation.value = "bottom")) {
-      const updated = height + -y;
-      if (updated >= SIZE_MIN) {
-        // update height
-        activeElement.value.styles.height = `${updated}px`;
+      const updatedHeight = height + y;
+      console.log(height, updatedHeight);
+      const updatdWidth = width - (height - updatedHeight);
 
-        // resizing default works best on bottom right when
-        // scaling, so just account for bottom left
+      if (updatedHeight >= SIZE_MIN) {
+
+        activeElement.value.styles.height = `${updatedHeight}px`;
+        activeElement.value.styles.width = `${updatdWidth}px`;
+
+        const updatedY = activeElement.value.currentY - (updatedHeight - height);
+        activeElement.value.currentY = updatedY;
+
+        if (resizeSide.value === "left") {
+          const updatedX = activeElement.value.currentX - (updatedHeight - height);
+          activeElement.value.currentX = updatedX;
+        }
+
+      }
+    } else if (resizeOrientation.value = "bottom") {
+      const updatedHeight = height + -y;
+      const updatdWidth = width - (height - updatedHeight);
+
+      if (updatedHeight >= SIZE_MIN) {
+
+        activeElement.value.styles.height = `${updatedHeight}px`;
+        activeElement.value.styles.width = `${updatdWidth}px`;
+
         if (resizeSide.value === "left") {
           activeElement.value.currentX =
-            activeElement.value.currentX - (updated - height);
+            activeElement.value.currentX - (updatedHeight - height);
         }
       }
     }
@@ -234,8 +240,11 @@ const retrieveDimensions = (): {
   };
 };
 
-const setActiveElement = (element: ElementJSON): void => {
+const setActiveElement = (element: ElementJSON, resize: ResizeRecord): void => {
+  // set active data
   activeElement.value = element;
+  activeResize.value = resize;
+
   // set up dimensions for ToolElement Wrapper
   if (activeElement.value && activeElement.value.reference) {
 
@@ -269,18 +278,30 @@ const evaluateComponent = (type: string): typeof IMAGE => {
 };
 
 const setActiveResize = (
-  element: ElementJSON,
-  resize: ResizeRecord,
-  direction: string
+  direction: string,
+  data: ResizeEmit,
 ): void => {
+  if (!activeElement.value || !activeResize.value) return;
+  // set state
+  activeElement.value.isDragging = false;
+  activeElement.value.isResizing = true;
+
+  activeResize.value.currentY = data.clientY;
+  activeResize.value.mouseY = data.mouseY;
+
+  const { top, left } = activeElement.value.reference!.getBoundingClientRect();
+
+  activeResize.value.posX = left;
+  activeResize.value.posY = top;
+
   const splitDir = direction.split("-");
   // eg. top || bottom
   resizeOrientation.value = splitDir[0];
   // eg left || right
   resizeSide.value = splitDir[1];
 
-  activeElement.value = element;
-  activeResize.value = resize;
+  // activeElement.value = element;
+  // activeResize.value = resize;
 };
 
 const clearActiveElement = (): void => {
@@ -305,7 +326,8 @@ defineExpose({
 </script>
 
 <template>
-  <ToolWrapper v-if="activeElement" :totalElements="elements.length" :toolConfig="toolConfig" />
+  <ToolWrapper @setActiveResize="setActiveResize" v-if="activeElement" :totalElements="elements.length"
+    :toolConfig="toolConfig" />
 
   <section style="min-height: 75px">
     <ElementCustomize v-if="activeElement" :totalElements="elements.length" :activeElement="activeElement"
@@ -315,7 +337,7 @@ defineExpose({
 
     <component v-for="(element, i) in elements" :totalElements="elements.length" :is="evaluateComponent(element.type)"
       :element="element" :index="i" :src="element.data ?? ''" @setActiveRotate="setActiveRotate"
-      @setActiveElement="setActiveElement" @setActiveResize="setActiveResize" @clearActiveElement="clearActiveElement" />
+      @setActiveElement="setActiveElement" @clearActiveElement="clearActiveElement" />
   </div>
   {{ activeElement ? activeElement.data : null }}
 </template>

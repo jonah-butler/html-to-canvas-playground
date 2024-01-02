@@ -18,7 +18,7 @@ const props = defineProps({
 
 // EMITS
 const emits = defineEmits<{
-  (e: "setActiveElement", settings: ElementJSON): void;
+  (e: "setActiveElement", settings: ElementJSON, resize: ResizeRecord): void;
   (e: "setActiveReference", isActive: boolean): void;
   (
     e: "setActiveResize",
@@ -79,9 +79,9 @@ const handleMouseDown = (e: MouseEvent): void => {
     setInitialPosition(e.clientX, e.clientY);
     if (!settings.isResizing) {
       settings.isDragging = true;
-      emits("setActiveElement", settings);
+      emits("setActiveElement", settings, resize);
     } else {
-      emits("setActiveElement", settings);
+      emits("setActiveElement", settings, resize);
     }
 
   }, 1);
