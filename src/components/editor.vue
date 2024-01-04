@@ -158,9 +158,8 @@ const handleRotate = (e: MouseEvent): void => {
   activeElement.value!.rotation += rotationDegrees;
 
   // rotate with transform
-  activeElement.value!.styles.transform = `rotate(${
-    activeElement.value!.rotation
-  }deg)`;
+  activeElement.value!.styles.transform = `rotate(${activeElement.value!.rotation
+    }deg)`;
   // reset mouseX
   activeElement.value!.mouseX = e.clientX;
 };
@@ -205,10 +204,10 @@ const handleResize = (e: MouseEvent): void => {
           activeElement.value.currentY - (updatedHeight - height);
 
         activeElement.value.currentY = updatedY;
-        // update tool config y position
 
         toolConfig.value.y! =
           activeElement.value.currentY - toolConfig.value.initialY!;
+
         if (resizeSide.value === "left") {
           const updatedX =
             activeElement.value.currentX - (updatedHeight - height);
@@ -238,8 +237,8 @@ const handleResize = (e: MouseEvent): void => {
 
           activeElement.value.currentX = updatedX;
 
-          // update x position for tool config
-          toolConfig.value.x = updatedX;
+          toolConfig.value.x = activeElement.value.currentX - toolConfig.value.initialX!;
+
         }
       }
     }
@@ -344,34 +343,17 @@ defineExpose({
 </script>
 
 <template>
-  <ToolWrapper
-    @setActiveResize="setActiveResize"
-    v-if="activeElement"
-    :totalElements="elements.length"
-    :toolConfig="toolConfig"
-  />
+  <ToolWrapper @setActiveResize="setActiveResize" v-if="activeElement" :totalElements="elements.length"
+    :toolConfig="toolConfig" />
 
   <section style="min-height: 75px">
-    <ElementCustomize
-      v-if="activeElement"
-      :totalElements="elements.length"
-      :activeElement="activeElement"
-      :index="findActiveElementIndex"
-      @updateNeighborZIndex="updateNeighborZIndex"
-    />
+    <ElementCustomize v-if="activeElement" :totalElements="elements.length" :activeElement="activeElement"
+      :index="findActiveElementIndex" @updateNeighborZIndex="updateNeighborZIndex" />
   </section>
   <div tabindex="0" id="editor" ref="editor">
-    <component
-      v-for="(element, i) in elements"
-      :totalElements="elements.length"
-      :is="evaluateComponent(element.type)"
-      :element="element"
-      :index="i"
-      :src="element.data ?? ''"
-      @setActiveRotate="setActiveRotate"
-      @setActiveElement="setActiveElement"
-      @clearActiveElement="clearActiveElement"
-    />
+    <component v-for="(element, i) in elements" :totalElements="elements.length" :is="evaluateComponent(element.type)"
+      :element="element" :index="i" :src="element.data ?? ''" @setActiveRotate="setActiveRotate"
+      @setActiveElement="setActiveElement" @clearActiveElement="clearActiveElement" />
   </div>
   {{ activeElement ? activeElement.data : null }}
 </template>
