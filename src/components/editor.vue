@@ -46,30 +46,30 @@ const elements = ref<ElementJSON[]>([
       "transform": `rotate(0deg)`,
     },
   },
-  // {
-  //   type: "IMAGE",
-  //   data: "https://dev-blog-resources.s3.amazonaws.com/canvas_1696708967226.png",
-  //   reference: null,
-  //   class: "",
-  //   initialX: 0,
-  //   initialY: 0,
-  //   currentX: 0,
-  //   currentY: 0,
-  //   mouseX: 0,
-  //   rotation: 0,
-  //   isDragging: false,
-  //   isResizing: false,
-  //   isRotating: false,
-  //   isSelected: false,
-  //   styles: {
-  //     "width": "666px",
-  //     "height": "304px",
-  //     "opacity": 1,
-  //     "z-index": "2",
-  //     "border-radius": "0%",
-  //     "transform": `rotate(0deg)`,
-  //   },
-  // }
+  {
+    type: "IMAGE",
+    data: "https://dev-blog-resources.s3.amazonaws.com/canvas_1696708967226.png",
+    reference: null,
+    class: "",
+    initialX: 0,
+    initialY: 0,
+    currentX: 0,
+    currentY: 0,
+    mouseX: 0,
+    rotation: 0,
+    isDragging: false,
+    isResizing: false,
+    isRotating: false,
+    isSelected: false,
+    styles: {
+      "width": "666px",
+      "height": "304px",
+      "opacity": 1,
+      "z-index": "2",
+      "border-radius": "0%",
+      "transform": `rotate(0deg)`,
+    },
+  },
   // {
   //   type: "div",
   //   reference: null,
@@ -88,6 +88,8 @@ const elements = ref<ElementJSON[]>([
   // },
 ]);
 
+const ratioDiff = ref(0);
+
 onMounted((): void => {
   document.addEventListener("mouseup", handleMouseUp);
   document.addEventListener("mousemove", handleMouseMove);
@@ -98,6 +100,7 @@ const findActiveElementIndex = computed((): number => {
 });
 
 const handleMouseUp = (): void => {
+  ratioDiff.value = 0;
   if (activeElement.value) {
     if (!activeElement.value.isResizing) {
       // mouse up on drag
@@ -158,8 +161,9 @@ const handleRotate = (e: MouseEvent): void => {
   activeElement.value!.rotation += rotationDegrees;
 
   // rotate with transform
-  activeElement.value!.styles.transform = `rotate(${activeElement.value!.rotation
-    }deg)`;
+  activeElement.value!.styles.transform = `rotate(${
+    activeElement.value!.rotation
+  }deg)`;
   // reset mouseX
   activeElement.value!.mouseX = e.clientX;
 };
@@ -180,25 +184,36 @@ const handleMove = (e: MouseEvent): void => {
 
 const SIZE_MIN = 20;
 
+const aspectRatio = computed((): number => {
+  const height =
+    activeElement.value!.reference?.getBoundingClientRect().height!;
+  const width = parseInt(activeElement.value!.styles.width as string);
+
+  return width / height;
+});
+
 const handleResize = (e: MouseEvent): void => {
   if (activeElement.value && activeResize.value) {
-    const height = parseInt(activeElement.value.styles.height as string);
+    const height =
+      activeElement.value.reference?.getBoundingClientRect().height!;
     const width = parseInt(activeElement.value.styles.width as string);
+
+    activeElement.value.styles.height = "auto";
 
     const y = activeResize.value.currentY - e.clientY;
     activeResize.value.currentY = e.clientY;
 
     if (resizeOrientation.value === "top") {
       const updatedHeight = height + y;
-      const updatdWidth = width - (height - updatedHeight);
+      const updatedWidth = Math.round(updatedHeight * aspectRatio.value);
 
       if (updatedHeight >= SIZE_MIN) {
         activeElement.value.styles.height = `${updatedHeight}px`;
-        activeElement.value.styles.width = `${updatdWidth}px`;
+        activeElement.value.styles.width = `${updatedWidth}px`;
 
         // update tool config width/height
         toolConfig.value.height = updatedHeight;
-        toolConfig.value.width = updatdWidth;
+        toolConfig.value.width = updatedWidth;
 
         const updatedY =
           activeElement.value.currentY - (updatedHeight - height);
@@ -210,7 +225,7 @@ const handleResize = (e: MouseEvent): void => {
 
         if (resizeSide.value === "left") {
           const updatedX =
-            activeElement.value.currentX - (updatedHeight - height);
+            activeElement.value.currentX - (updatedWidth - width);
 
           activeElement.value.currentX = updatedX;
 
@@ -221,10 +236,11 @@ const handleResize = (e: MouseEvent): void => {
       }
     } else if ((resizeOrientation.value = "bottom")) {
       const updatedHeight = height + -y;
-      const updatedWidth = width - (height - updatedHeight);
+      const updatedWidth = Math.round(updatedHeight * aspectRatio.value);
 
       if (updatedHeight >= SIZE_MIN) {
         activeElement.value.styles.height = `${updatedHeight}px`;
+
         activeElement.value.styles.width = `${updatedWidth}px`;
 
         // update tool config width/height
@@ -233,12 +249,12 @@ const handleResize = (e: MouseEvent): void => {
 
         if (resizeSide.value === "left") {
           const updatedX =
-            activeElement.value.currentX - (updatedHeight - height);
+            activeElement.value.currentX - (updatedWidth - width);
 
           activeElement.value.currentX = updatedX;
 
-          toolConfig.value.x = activeElement.value.currentX - toolConfig.value.initialX!;
-
+          toolConfig.value.x =
+            activeElement.value.currentX - toolConfig.value.initialX!;
         }
       }
     }
@@ -343,17 +359,34 @@ defineExpose({
 </script>
 
 <template>
-  <ToolWrapper @setActiveResize="setActiveResize" v-if="activeElement" :totalElements="elements.length"
-    :toolConfig="toolConfig" />
+  <ToolWrapper
+    @setActiveResize="setActiveResize"
+    v-if="activeElement"
+    :totalElements="elements.length"
+    :toolConfig="toolConfig"
+  />
 
   <section style="min-height: 75px">
-    <ElementCustomize v-if="activeElement" :totalElements="elements.length" :activeElement="activeElement"
-      :index="findActiveElementIndex" @updateNeighborZIndex="updateNeighborZIndex" />
+    <ElementCustomize
+      v-if="activeElement"
+      :totalElements="elements.length"
+      :activeElement="activeElement"
+      :index="findActiveElementIndex"
+      @updateNeighborZIndex="updateNeighborZIndex"
+    />
   </section>
   <div tabindex="0" id="editor" ref="editor">
-    <component v-for="(element, i) in elements" :totalElements="elements.length" :is="evaluateComponent(element.type)"
-      :element="element" :index="i" :src="element.data ?? ''" @setActiveRotate="setActiveRotate"
-      @setActiveElement="setActiveElement" @clearActiveElement="clearActiveElement" />
+    <component
+      v-for="(element, i) in elements"
+      :totalElements="elements.length"
+      :is="evaluateComponent(element.type)"
+      :element="element"
+      :index="i"
+      :src="element.data ?? ''"
+      @setActiveRotate="setActiveRotate"
+      @setActiveElement="setActiveElement"
+      @clearActiveElement="clearActiveElement"
+    />
   </div>
   {{ activeElement ? activeElement.data : null }}
 </template>
