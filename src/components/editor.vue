@@ -291,7 +291,7 @@ const setActiveElement = (element: ElementJSON, resize: ResizeRecord): void => {
     toolConfig.value = {
       height,
       left,
-      top,
+      top: top + window.scrollY,
       width,
       x: 0,
       y: 0,
